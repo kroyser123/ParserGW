@@ -20,31 +20,31 @@ func main() {
 		log.Fatal("Directory path is required. Use -d flag")
 	}
 
-	// Проверяем существование директории
+	
 	if _, err := os.Stat(*dirPath); os.IsNotExist(err) {
 		log.Fatalf("Directory %s does not exist", *dirPath)
 	}
 
-	// Подключаемся к БД
+	
 	database, err := db.Connect()
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer database.Close()
 
-	// Загружаем JSON пути
+	
 	jsonPaths, err := config.LoadJSONPaths(*configPath)
 	if err != nil {
 		log.Fatalf("Failed to load JSON paths: %v", err)
 	}
 
-	// Обрабатываем файлы
+	
 	stats, err := app.ProcessDirectory(database, *dirPath, jsonPaths)
 	if err != nil {
 		log.Fatalf("Failed to process directory: %v", err)
 	}
 
-	// Выводим статистику
+	
 	fmt.Printf("Processed files: %d\n", stats.FilesProcessed)
 	fmt.Printf("Records updated: %d\n", stats.RecordsUpdated)
 }
