@@ -1,50 +1,54 @@
-// Package db отвечает за подключение к PostgreSQL и операции с БД.
-package dbb
+package db
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 
+	"github.com/kroyser123/ParserGW/internal/models"
 	"github.com/lib/pq"
+	_ "github.com/lib/pq"
 )
 
-// Connect подключается к PostgreSQL
-func Connect(connStr string) (*sql.DB, error) {
+func Connect() (*sql.DB, error) {
+	connStr := "host=localhost port=5432 user=user password=password dbname=postgres sslmode=disable"
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("database connection error: %v", err)
 	}
-	if err := db.Ping(); err != nil {
-		db.Close()
-		return nil, err
+
+	err = db.Ping()
+	if err != nil {
+		return nil, fmt.Errorf("database ping error: %v", err)
 	}
-	log.Println("✅ Подключено к PostgreSQL")
+
+	log.Println("Connected to PostgreSQL successfully")
 	return db, nil
 }
 
-// UpsertFileMetadata сохраняет извлечённые метаданные в таблицу
-func UpsertFileMetadata(db *sql.DB, filePath string, meta map[string]interface{}) error {
+func SaveConfig(db *sql.DB, config *models.Config) error {
 	query := `
-		INSERT INTO file_metadata (
-			file_path, name, description, version, author, extracted_tags, has_matching_tags
-		) VALUES ($1, $2, $3, $4, $5, $6, $7)
-		ON CONFLICT (file_path, name) DO UPDATE SET
-			description = EXCLUDED.description,
-			version = EXCLUDED.version,
-			author = EXCLUDED.author,
-			extracted_tags = EXCLUDED.extracted_tags,
-			has_matching_tags = EXCLUDED.has_matching_tags
-	`
+        INSERT INTO configs (name, description, version, author, tags)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (name) 
+        DO UPDATE SET 
+            description = EXCLUDED.description,
+            version = EXCLUDED.version,
+            author = EXCLUDED.author,
+            tags = EXCLUDED.tags
+    `
 
-	_, err := db.Exec(
-		query,
-		filePath,
-		meta["name"],
-		meta["description"],
-		meta["version"],
-		meta["author"],
-		pq.Array(meta["extracted_tags"].([]string)),
-		meta["has_matching_tags"].(bool),
+	_, err := db.Exec(query,
+		config.Name,
+		config.Description,
+		config.Version,
+		config.Author,
+		pq.Array(config.Tags),
 	)
-	return err
+
+	if err != nil {
+		return fmt.Errorf("save config error: %v", err)
+	}
+
+	return nil
 }
